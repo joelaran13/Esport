@@ -242,8 +242,9 @@
     </div>
 
     <script>
-        // Direct CSV Published URL
-        const csvUrl = 'https://docs.google.com/spreadsheets/d/1RB6RdDieEWf5MBorERKsL9nWbt6qc01rY_5aCyNZjPA/edit?gid=0#gid=0'; 
+        // Direct clean CSV export URL from Google Sheets
+        const sheetId = '1RB6RdDieEWf5MBorERKsL9nWbt6qc01rY_5aCyNZjPA';
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`; 
 
         let globalData = [];
 
@@ -265,10 +266,21 @@
                 globalData = [];
 
                 for (let i = 1; i < rows.length; i++) { 
-                    if (!rows[i].trim()) continue; 
+                    const line = rows[i].trim();
+                    if (!line) continue; 
                     
-                    const cols = rows[i].split(',').map(col => col.replace(/^"(.*)"$/, '$1').trim());
+                    // Filter out any unwanted JavaScript or HTML response lines
+                    if (line.startsWith('/*') || line.startsWith('var ') || line.startsWith('function') || line.startsWith('<')) {
+                        continue;
+                    }
                     
+                    const cols = line.split(',').map(col => col.replace(/^"(.*)"$/, '$1').trim());
+                    
+                    // Check if column 0 looks like code or header repeat
+                    if (cols[0].includes('function') || cols[0].includes('Object.') || cols[0] === 'Team Name') {
+                        continue;
+                    }
+
                     const kills = parseInt(cols[1]) || 0;
                     const placement = parseInt(cols[2]) || 0;
                     // Auto-calculate total if column D isn't updated manually
