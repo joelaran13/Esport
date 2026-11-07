@@ -249,7 +249,15 @@
 
         async function fetchLeaderboard() {
             try {
-                const response = await fetch(csvUrl);
+                // Add timestamp parameter and no-cache option to bypass browser and CDN caching
+                const cacheBustUrl = csvUrl + (csvUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+                const response = await fetch(cacheBustUrl, { 
+                    cache: 'no-store',
+                    headers: {
+                        'Pragma': 'no-cache',
+                        'Cache-Control': 'no-cache'
+                    }
+                });
                 if (!response.ok) return; 
                 
                 const csvText = await response.text();
@@ -261,17 +269,27 @@
                     
                     const cols = rows[i].split(',').map(col => col.replace(/^"(.*)"$/, '$1').trim());
                     
+                    const kills = parseInt(cols[1]) || 0;
+                    const placement = parseInt(cols[2]) || 0;
+                    // Auto-calculate total if column D isn't updated manually
+                    const totalCalculated = kills + placement;
+                    const totalCol = parseInt(cols[3]);
+                    const total = !isNaN(totalCol) && totalCol > 0 ? totalCol : totalCalculated;
+
                     globalData.push({
                         name: cols[0] || 'Unknown',
-                        kills: cols[1] || '0',
-                        placement: cols[2] || '0',
-                        total: cols[3] || '0',
+                        kills: kills,
+                        placement: placement,
+                        total: total,
                         status: cols[4] || 'Waiting',
                         p1: cols[5] || 'N/A',
                         p2: cols[6] || 'N/A',
                         p3: cols[7] || 'N/A'
                     });
                 }
+
+                // Automatically sort teams by total score descending so ranks adjust live
+                globalData.sort((a, b) => b.total - a.total);
 
                 if (globalData.length > 0) {
                     document.getElementById('champ-name').textContent = globalData[0].name;
@@ -363,7 +381,8 @@
         }
 
         fetchLeaderboard();
-        setInterval(fetchLeaderboard, 15000); 
+        // Reduced interval from 15 seconds to 3 seconds for faster live updates
+        setInterval(fetchLeaderboard, 3000); 
     </script>
 </body>
 </html>
